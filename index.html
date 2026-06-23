@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Gallery</title>
+  <meta name="description" content="A beginner photographer's collection">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --black: #0a0a0a;
+      --dark: #111;
+      --gray: #666;
+      --light: #ccc;
+      --white: #eee;
+      --gap: 6px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--black);
+      color: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    header {
+      padding: 56px 24px 24px;
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    header p {
+      color: var(--gray);
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+    }
+
+    header .divider {
+      width: 28px;
+      height: 1px;
+      background: #333;
+      margin: 20px auto;
+    }
+
+    /* Filters */
+    .filters {
+      text-align: center;
+      padding: 0 24px 28px;
+    }
+
+    .filters button {
+      background: none;
+      border: 1px solid #333;
+      color: var(--gray);
+      padding: 5px 16px;
+      margin: 3px;
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    .filters button:hover,
+    .filters button.active {
+      border-color: var(--white);
+      color: var(--white);
+    }
+
+    .filter-count {
+      display: inline-block;
+      font-size: 0.65rem;
+      color: #555;
+      margin-left: 4px;
+    }
+
+    /* Photo Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--gap);
+      padding: 0 var(--gap);
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .grid-item {
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--dark);
+    }
+
+    .grid-item img {
+      width: 100%;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .grid-item img.loaded {
+      opacity: 1;
+    }
+
+    .grid-item:hover img {
+      filter: brightness(0.85);
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.97);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .lightbox.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .lightbox .close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: var(--white);
+      font-size: 2rem;
+      cursor: pointer;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+
+    .lightbox .close:hover { opacity: 1; }
+
+    .lightbox .nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--white);
+      font-size: 1.6rem;
+      cursor: pointer;
+      padding: 16px;
+      opacity: 0.3;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+
+    .lightbox .nav:hover { opacity: 1; }
+    .lightbox .nav.prev { left: 4px; }
+    .lightbox .nav.next { right: 4px; }
+
+    .lightbox figure {
+      max-width: 92vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .lightbox figure img {
+      max-width: 100%;
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 1px;
+      pointer-events: auto;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 48px 24px 40px;
+      color: #333;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+    }
+
+    footer a {
+      color: #444;
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--gray); }
+
+    /* Count badge */
+    .photo-count {
+      text-align: center;
+      padding: 0 24px 20px;
+      font-size: 0.7rem;
+      color: #444;
+      letter-spacing: 0.04em;
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        padding: 0 4px;
+      }
+      header { padding: 36px 16px 16px; }
+      header h1 { font-size: 1.2rem; }
+      .filters button { font-size: 0.72rem; padding: 4px 12px; }
+      .lightbox { padding: 12px; }
+      .lightbox .nav { font-size: 1.2rem; padding: 10px 6px; }
+    }
+
+    @media (max-width: 450px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <h1>⎔ Some Photos</h1>
+    <div class="divider"></div>
+    <p>Just a beginner learning to see — a handful of frames from the first roll</p>
+  </header>
+
+  <!-- Photo Count -->
+  <div class="photo-count" id="photoCount"></div>
+
+  <!-- Category Filters -->
+  <div class="filters" id="filters">
+    <button class="active" data-filter="all">All</button>
+    <button data-filter="Bali">Bali</button>
+    <button data-filter="Egypt">Egypt</button>
+    <button data-filter="Europe">Europe</button>
+    <button data-filter="Hongkong">Hong Kong</button>
+    <button data-filter="Lanzhou">Lanzhou</button>
+    <button data-filter="Yunnan">Yunnan</button>
+    <button data-filter="Zhejiang">Zhejiang</button>
+  </div>
+
+  <!-- Photo Grid -->
+  <div class="grid" id="grid"></div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-label="Photo preview">
+    <button class="close" id="lbClose" aria-label="Close">&times;</button>
+    <button class="nav prev" id="lbPrev" aria-label="Previous">&#8592;</button>
+    <button class="nav next" id="lbNext" aria-label="Next">&#8594;</button>
+    <figure>
+      <img id="lbImg" src="" alt="">
+    </figure>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    &copy; 2026 &middot; built with <a href="https://pages.github.com" target="_blank">GitHub Pages</a>
+  </footer>
+
+  <script>
+    // ============================================================
+    // Photos — edit your list here
+    // ============================================================
+    const photos = [
+      { file: "Bali/default(108).jpeg", category: "Bali" },
+      { file: "Bali/default(109).jpeg", category: "Bali" },
+      { file: "Bali/default(110).jpeg", category: "Bali" },
+      { file: "Egypt/default(45).jpeg", category: "Egypt" },
+      { file: "Egypt/default(46).jpeg", category: "Egypt" },
+      { file: "Egypt/default(47).jpeg", category: "Egypt" },
+      { file: "Egypt/default(48).jpeg", category: "Egypt" },
+      { file: "Egypt/default(49).jpeg", category: "Egypt" },
+      { file: "Egypt/default(50).jpeg", category: "Egypt" },
+      { file: "Egypt/default(51).jpeg", category: "Egypt" },
+      { file: "Egypt/default(52).jpeg", category: "Egypt" },
+      { file: "Egypt/default(53).jpeg", category: "Egypt" },
+      { file: "Egypt/default(54).jpeg", category: "Egypt" },
+      { file: "Egypt/default(55).jpeg", category: "Egypt" },
+      { file: "Egypt/default(56).jpeg", category: "Egypt" },
+      { file: "Egypt/default(57).jpeg", category: "Egypt" },
+      { file: "Egypt/default(58).jpeg", category: "Egypt" },
+      { file: "Egypt/default(59).jpeg", category: "Egypt" },
+      { file: "Egypt/default(60).jpeg", category: "Egypt" },
+      { file: "Egypt/default(61).jpeg", category: "Egypt" },
+      { file: "Egypt/default(62).jpeg", category: "Egypt" },
+      { file: "Egypt/default(63).jpeg", category: "Egypt" },
+      { file: "Egypt/default(64).jpeg", category: "Egypt" },
+      { file: "Egypt/default(65).jpeg", category: "Egypt" },
+      { file: "Egypt/default(66).jpeg", category: "Egypt" },
+      { file: "Egypt/default(67).jpeg", category: "Egypt" },
+      { file: "Egypt/default(68).jpeg", category: "Egypt" },
+      { file: "Egypt/default(69).jpeg", category: "Egypt" },
+      { file: "Europe/default(1).jpeg", category: "Europe" },
+      { file: "Europe/default(2).jpeg", category: "Europe" },
+      { file: "Europe/default(3).jpeg", category: "Europe" },
+      { file: "Europe/default(4).jpeg", category: "Europe" },
+      { file: "Europe/default(5).jpeg", category: "Europe" },
+      { file: "Europe/default(6).jpeg", category: "Europe" },
+      { file: "Europe/default(7).jpeg", category: "Europe" },
+      { file: "Europe/default(8).jpeg", category: "Europe" },
+      { file: "Europe/default.jpeg", category: "Europe" },
+      { file: "Hongkong/default(91).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(92).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(93).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(94).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(95).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(96).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(97).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(98).jpeg", category: "Hongkong" },
+      { file: "Hongkong/default(99).jpeg", category: "Hongkong" },
+      { file: "Lanzhou/default(10).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(11).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(12).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(13).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(14).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(15).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(16).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(18).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(19).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(20).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(21).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(22).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(23).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(24).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(25).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(26).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(27).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(28).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(29).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(30).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(31).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(32).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(33).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(34).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(35).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(36).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(37).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(38).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(39).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(40).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(41).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(42).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(43).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(44).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(85).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(86).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(87).jpeg", category: "Lanzhou" },
+      { file: "Lanzhou/default(9).jpeg", category: "Lanzhou" },
+      { file: "Yunnan/default(100).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(101).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(102).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(103).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(104).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(105).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(106).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(107).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(111).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(112).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(113).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(70).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(71).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(72).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(73).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(74).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(75).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(76).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(77).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(78).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(79).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(80).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(81).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(82).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(83).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default(84).jpeg", category: "Yunnan" },
+      { file: "Yunnan/default.png", category: "Yunnan" },
+      { file: "Zhejiang/15534254EAC6E8BFCFC33686AA848B9E.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/3ADCAF854DD8B58069CB775B9CC603CC.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/8D15472781306659FCE308BC7A56A402.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/92CA58DF318D464B4BEAE8EB6AD9F34D.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/B290D95F2CD31EF74FE6C7B36E70930F.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/CF173F03C02B41302CF384F8A8689E89.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/D5E29AAD11F993863A22556C97282FEA.jpg", category: "Zhejiang" },
+      { file: "Zhejiang/default(88).jpeg", category: "Zhejiang" },
+      { file: "Zhejiang/default(89).jpeg", category: "Zhejiang" },
+      { file: "Zhejiang/default(90).jpeg", category: "Zhejiang" }
+    ];
+
+    // ============================================================
+    // Render & interaction — no need to edit below
+    // ============================================================
+
+    let currentIndex = 0;
+    let currentFilter = "all";
+    let currentItems = [];
+
+    const grid = document.getElementById("grid");
+    const lightbox = document.getElementById("lightbox");
+    const lbImg = document.getElementById("lbImg");
+    const photoCount = document.getElementById("photoCount");
+    const filterButtons = document.querySelectorAll(".filters button");
+
+    // Build filter counts
+    const counts = {};
+    photos.forEach(p => { counts[p.category] = (counts[p.category] || 0) + 1; });
+    counts["all"] = photos.length;
+
+    filterButtons.forEach(btn => {
+      const cat = btn.dataset.filter;
+      const span = document.createElement("span");
+      span.className = "filter-count";
+      span.textContent = counts[cat] || 0;
+      btn.appendChild(span);
+    });
+
+    function getFiltered(category) {
+      return category === "all" ? photos : photos.filter(p => p.category === category);
+    }
+
+    function render(category) {
+      currentFilter = category;
+      currentItems = getFiltered(category);
+
+      photoCount.textContent = currentItems.length + " photo" + (currentItems.length !== 1 ? "s" : "");
+
+      grid.innerHTML = currentItems.map((p, i) => `
+        <div class="grid-item" data-index="${i}">
+          <img src="photos/${p.file}" alt="Photo" loading="lazy">
+        </div>
+      `).join("");
+
+      // Fade in on load
+      document.querySelectorAll(".grid-item img").forEach(img => {
+        if (img.complete) {
+          img.classList.add("loaded");
+        } else {
+          img.addEventListener("load", () => img.classList.add("loaded"));
+        }
+      });
+
+      // Click to open lightbox
+      document.querySelectorAll(".grid-item").forEach((el, i) => {
+        el.addEventListener("click", () => openLightbox(i));
+      });
+    }
+
+    function openLightbox(index) {
+      if (!currentItems.length) return;
+      currentIndex = ((index % currentItems.length) + currentItems.length) % currentItems.length;
+      lbImg.src = "photos/" + currentItems[currentIndex].file;
+      lightbox.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    function navigate(dir) {
+      currentIndex = ((currentIndex + dir) % currentItems.length + currentItems.length) % currentItems.length;
+      lbImg.src = "photos/" + currentItems[currentIndex].file;
+    }
+
+    // Filter buttons
+    filterButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelector(".filters button.active")?.classList.remove("active");
+        btn.classList.add("active");
+        render(btn.dataset.filter);
+      });
+    });
+
+    // Lightbox controls
+    document.getElementById("lbClose").addEventListener("click", closeLightbox);
+    document.getElementById("lbPrev").addEventListener("click", () => navigate(-1));
+    document.getElementById("lbNext").addEventListener("click", () => navigate(1));
+
+    document.addEventListener("keydown", e => {
+      if (!lightbox.classList.contains("open")) return;
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") navigate(-1);
+      if (e.key === "ArrowRight") navigate(1);
+    });
+
+    lightbox.addEventListener("click", e => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    // Start
+    render("all");
+  </script>
+</body>
+</html>
